@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escape the Forgotten War: Balanced Challenge</title>
+    <style>
+        :root {
+            --bg-dark: #0b0e11;
+            --panel-bg: rgba(17, 22, 28, 0.96);
+            --accent-green: #39ff14;
+            --accent-red: #ff2a2a;
+            --text-light: #cfd8dc;
+            --military-gold: #ffca28;
+            --panel-border: #263238;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1400px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .background-grid {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(57, 255, 20, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(57, 255, 20, 0.015) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: rotateX(65deg) translateZ(-400px);
+            animation: gridScroll 25s linear infinite;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        @keyframes gridScroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 1000px; }
+        }
+
+        .game-viewport {
+            position: relative;
+            width: 100%;
+            max-width: 1100px;
+            background: var(--panel-bg);
+            border: 3px solid var(--panel-border);
+            box-shadow: 0px 30px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(57, 255, 20, 0.05);
+            border-radius: 12px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-bar {
+            background: #141a21;
+            padding: 18px 25px;
+            border-bottom: 2px solid var(--panel-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .game-title {
+            color: var(--military-gold);
+            font-size: 1.3rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .room-tracker {
+            background: #070a0d;
+            padding: 6px 18px;
+            border-radius: 4px;
+            border: 1px solid #37474f;
+            font-size: 1rem;
+            color: var(--accent-green);
+        }
+
+        .game-layout {
+            display: flex;
+            flex-direction: row;
+            min-height: 520px;
+        }
+
+        @media (max-width: 850px) {
+            .game-layout { flex-direction: column; }
+            .intel-panel { border-right: none !important; border-bottom: 2px solid var(--panel-border); max-height: 250px; }
+        }
+
+        .intel-panel {
+            flex: 1.1;
+            padding: 30px;
+            overflow-y: auto;
+            border-right: 2px solid var(--panel-border);
+            background: rgba(10, 14, 18, 0.95);
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .intel-panel h3 {
+            color: var(--military-gold);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #263238;
+            padding-bottom: 8px;
+            font-size: 1.15rem;
+            letter-spacing: 1px;
+        }
+
+        .intel-text {
+            font-size: 0.95rem;
+            color: #b0bec5;
+            white-space: pre-wrap;
+        }
+
+        .control-panel {
+            flex: 0.9;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #12181f 0%, #0a0d12 100%);
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Reading Lock Screen overlay for the controls side */
+        .control-lock-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 14, 18, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0 12px 12px 0;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.4s ease;
+        }
+
+        .lock-timer-text {
+            color: var(--military-gold);
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .lock-subtext {
+            color: #78909c;
+            font-size: 0.85rem;
+        }
+
+        /* Visual scanning effect for text panel */
+        .scan-line {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(to bottom, transparent, var(--accent-green), transparent);
+            box-shadow: 0 0 8px var(--accent-green);
+            animation: scan 3s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
+        .puzzle-instructions {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #90a4ae;
+            margin-bottom: 20px;
+            border: 1px dashed #37474f;
+            padding: 12px;
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }
+
+        .puzzle-stage {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 280px;
+        }
+
+        /* Input Modules styling */
+        .keypad-screen {
+            width: 100%;
+            max-width: 240px;
+            background: #040608;
+            border: 2px solid #212c34;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .input-display {
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            color: var(--accent-green);
+            height: 35px;
+            font-weight: bold;
+        }
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 240px;
+        }
+        .key-btn {
+            background: linear-gradient(180deg, #222d37 0%, #171f26 100%);
+            border: 1px solid #37474f;
+            color: var(--text-light);
+            padding: 12px;
+            font-size: 1.1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .slider-matrix-rack {
+            width: 100%;
+            max-width: 320px;
+            background: #141b22;
+            padding: 15px;
+            border: 2px solid #2c3e50;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .horizontal-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #07090c;
+            border-radius: 5px;
+            outline: none;
+            margin: 15px 0;
+        }
+        .horizontal-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--military-gold);
+            cursor: pointer;
+        }
+
+        .dial-wrap {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, #25313d 0%, #0e1318 80%);
+            border: 6px solid #37474f;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s ease-out;
+            margin-bottom: 15px;
+        }
+        .dial-notch { position: absolute; top: 5px; width: 6px; height: 18px; background: var(--accent-red); }
+        .dial-center-readout {
+            width: 70px; height: 70px; background: #05070a; border-radius: 50%;
+            border: 2px solid var(--military-gold); display: flex; justify-content: center;
+            align-items: center; font-size: 1.1rem; color: var(--accent-green); font-weight: bold;
+        }
+        .tuner-button-group { display: flex; gap: 15px; }
+        .tune-btn { background: #1c2630; border: 1px solid #37474f; color: var(--text-light); padding: 8px 16px; font-size: 1.1rem; cursor: pointer; border-radius: 4px; }
+
+        .crypto-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 260px; width: 100%; }
+        .grid-node { background: #141a22; border: 1px solid #2e3d49; color: #78909c; padding: 15px 5px; text-align: center; font-size: 1.1rem; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .grid-node.selected { background: rgba(57, 255, 20, 0.15); border-color: var(--accent-green); color: var(--accent-green); }
+
+        .circuit-array { display: flex; gap: 20px; justify-content: center; width: 100%; }
+        .breaker-switch { display: flex; flex-direction: column; align-items: center; background: #161e26; padding: 15px; border-radius: 6px; border: 2px solid #2b3945; width: 75px; }
+        .switch-input { width: 40px; height: 22px; -webkit-appearance: none; appearance: none; background: var(--accent-red); border-radius: 11px; position: relative; outline: none; cursor: pointer; transition: background 0.3s ease; }
+        .switch-input:checked { background: var(--accent-green); }
+        .switch-input:before { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: transform 0.3s ease; }
+        .switch-input:checked:before { transform: translateX(18px); }
+        .breaker-label { font-size: 0.75rem; margin-bottom: 10px; text-align: center; font-weight: bold; color: #90a4ae; }
+
+        .feedback-text { margin-top: 15px; height: 20px; font-size: 0.85rem; font-weight: bold; text-align: center; }
+        .screen-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #090d12; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; text-align: center; }
+        .hidden { display: none !important; }
+        .action-btn { background: transparent; border: 2px solid var(--accent-green); color: var(--accent-green); padding: 12px 35px; font-size: 1.1rem; cursor: pointer; margin-top: 25px; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
+        .action-btn:hover { background: var(--accent-green); color: #000; box-shadow: 0 0 25px rgba(57, 255, 20, 0.5); }
+    </style>
+</head>
+<body>
+
+    <div class="background-grid"></div>
+
+    <div id="start-screen" class="screen-overlay">
+        <h1 class="game-title" style="font-size: 2.6rem; margin-bottom: 15px;">ESCAPE THE FORGOTTEN WAR</h1>
+        <p style="color: #8a9ba8; max-width: 650px; font-size: 1rem; line-height: 1.7;">
+            Analyze the historical text dossiers, calculate or deduce the hidden values, and bypass the locks.
+        </p>
+        <button class="action-btn" onclick="startGame()">Start Simulation</button>
+    </div>
+
+    <div id="game-container" class="game-viewport hidden">
+        <div class="header-bar">
+            <div class="game-title">Tactical Interface Matrix</div>
+            <div id="room-display" class="room-tracker">SECURITY LOCK: 1/6</div>
+        </div>
+
+        <div class="game-layout">
+            <div class="intel-panel">
+                <div id="scanner" class="scan-line"></div>
+                <h3 id="intel-title">Loading Dossiers...</h3>
+                <div id="intel-content" class="intel-text">Parsing data structure...</div>
+            </div>
+
+            <div class="control-panel">
+                <div id="control-lock" class="control-lock-overlay">
+                    <div id="lock-timer" class="lock-timer-text">SCANNING DOSSIER: 5s</div>
+                    <div class="lock-subtext">Review the historic database on the left to unlock controls</div>
+                </div>
+
+                <div id="puzzle-hint" class="puzzle-instructions">Parsing lock configurations...</div>
+                <div id="puzzle-stage-hub" class="puzzle-stage"></div>
+                <div id="feedback-message" class="feedback-text"></div>
+                <button id="master-submit-btn" class="action-btn" style="margin-top:15px; width:100%; max-width:240px;" onclick="checkCurrentPuzzle()">ENGAGE LOCK BYPASS</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="win-screen" class="screen-overlay hidden">
+        <h1 style="color: var(--accent-green); font-size: 3rem; margin-bottom: 10px;">CORE OVERRIDDEN</h1>
+        <h2 style="color: var(--military-gold); margin-bottom: 20px;">Vault Infrastructure Successfully Escaped!</h2>
+        <button class="action-btn" onclick="location.reload()">Restart</button>
+    </div>
+
+    <script>
+        const roomsData = [
+            {
+                title: "Dossier Room I",
+                hint: "MATH CLUE: Find the start year, then add exactly 3 to find the end year. String them together.",
+                text: `The Korean War took place on the Korean Peninsula between June 25, 1950, and July 27, 1953. While active combat lasted for about three years, the true roots of the dispute grew in August of 1945. Because the war ended in an armistice rather than a normal, formal peace treaty, in technicality, the nation still remains in a state of conflict today.`
+            },
+            {
+                title: "Dossier Room II",
+                hint: "DEDUCTION CLUE: Slider 1 = The divided parallel line number. Slider 2 = The year Japan was defeated.",
+                text: `The root causes of the war grew out of the end of WWII. For decades, Korea had been occupied by Japan. After Japan’s defeat in WWII during 1945, the Allies decided to divide all of Korea along the 38th parallel to oversee the surrender of Japan, with the Soviets occupying the North and the US, the south. This temporary division evolved into two hostile sovereign states.`
+            },
+            {
+                title: "Dossier Room III",
+                hint: "MATH CLUE: Take the total number of invading soldiers and subtract 5,000 to balance the counter dial.",
+                text: `Attempting to unify all of the Korean peninsula under the North Korean communist regime, the North Korean People’s Army launched a massive invasion across the 38th parallel. Armed with Soviet tanks, 75,000 soldiers from North Korea’s army quickly overwhelmed South Korean defenses on the morning of June 25, 1950. In response, the United States entered the war to aid the South.`
+            },
+            {
+                title: "Dossier Room IV",
+                hint: "DEDUCTION CLUE: Click the specific number code name used by South Koreans, AND the year of the tree clash.",
+                text: `The relationship remained very tense and fragile. June 25th 2025 marked the 75th anniversary of the start of the Korean War. The South Koreans refer to this war that continues to divide their homeland simply as the numbers “6-2-5” (pronounced yook-ee-o). While a ceasefire stopped serious combat, both nations still saw each other as threats. This hostility is proven by border clashes. For example, on August 18, 1976, North Korean soldiers killed two US Army Officers in the truce village of Panmunjom where they were trimming trees.`
+            },
+            {
+                title: "Dossier Room V",
+                hint: "THINKING CLUE: Flip the switches for ONLY the two industries that suffered the exact same percentage of destruction.",
+                text: `Korea lost a lot of money after the Korean War. Total Economic Damage came out to be US $6.9 billion. After the first four months (October 1950), 70% of Textiles Industries were destroyed, 70% of Chemical Industries, 40% of Agriculture Machine Industries and 10% of Rubber Industries. Furthermore, by the time of 1951, 44% of factories were destroyed throughout the entire war, rapidly collapsing the production infrastructure.`
+            },
+            {
+                title: "Dossier Room VI",
+                hint: "MATH CLUE: Take the total square kilometers of land gained and add 100 to calibrate the final range gauge.",
+                text: `The Korean war helped nations realize what they had to change about their military to help make it as perfect as possible. South Korea benefited from the war because they gained 3,900 square kilometers of land to its territory. The Korean War stopped South Korea's independence against communist and formed a strategy for the United Nations without escalating to WWII.`
+            }
+        ];
+
+        let currentRoom = 0;
+        let keypadInput = "";
+        let dialValue = 0;
+        let selectedNodes = [];
+        let lockTimerInterval = null;
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+            loadRoom();
+        }
+
+        function startReadingLock() {
+            // Reset and show the lock screen
+            const lockOverlay = document.getElementById('control-lock');
+            const timerText = document.getElementById('lock-timer');
+            const scanner = document.getElementById('scanner');
+            
+            lockOverlay.classList.remove('hidden');
+            scanner.classList.remove('hidden');
+            
+            let timeLeft = 6; // 6 seconds lock time to guarantee they look over the short text blocks
+            
+            clearInterval(lockTimerInterval);
+            
+            lockTimerInterval = setInterval(() => {
+                timeLeft--;
+                timerText.innerText = `SCANNING DOSSIER: ${timeLeft}s`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(lockTimerInterval);
+                    lockOverlay.classList.add('hidden');
+                    scanner.classList.add('hidden'); // stop scan line when read is complete
+                }
+            }, 1000);
+        }
+
+        function loadRoom() {
+            if (currentRoom >= roomsData.length) {
+                document.getElementById('game-container').classList.add('hidden');
+                document.getElementById('win-screen').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('room-display').innerText = `SECURITY LOCK: ${currentRoom + 1}/6`;
+            document.getElementById('intel-title').innerText = roomsData[currentRoom].title;
+            document.getElementById('intel-content').innerText = roomsData[currentRoom].text;
+            document.getElementById('puzzle-hint').innerText = roomsData[currentRoom].hint;
+            document.getElementById('feedback-message').innerText = "";
+
+            const stageHub = document.getElementById('puzzle-stage-hub');
+            document.getElementById('master-submit-btn').style.display = "block"; 
+
+            if (currentRoom === 0) {
+                stageHub.innerHTML = `
+                    <div class="keypad-screen"><div id="disp" class="input-display"></div></div>
+                    <div class="keypad-grid">
+                        ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="key-btn" onclick="pressNum('${n}')">${n}</button>`).join('')}
+                        <button class="key-btn" style="color:var(--accent-red)" onclick="pressNum('C')">CLR</button>
+                        <button class="key-btn" onclick="pressNum('0')">0</button>
+                        <button class="key-btn" style="color:var(--accent-green)" onclick="checkCurrentPuzzle()">ENT</button>
+                    </div>
+                `;
+                document.getElementById('master-submit-btn').style.display = "none"; 
+                keypadInput = "";
+            } 
+            else if (currentRoom === 1) {
+                stageHub.innerHTML = `
+                    <div class="slider-matrix-rack">
+                        <div class="breaker-label">PARALLEL BOUNDARY</div>
+                        <input type="range" min="0" max="100" value="0" class="horizontal-slider" id="lever1" oninput="document.getElementById('l1-v').innerText = this.value">
+                        <div style="font-size:1.2rem; font-weight:bold; color:var(--accent-green)" id="l1-v">0</div>
+                    </div>
+                    <div class="slider-matrix-rack">
+                        <div class="breaker-label">DEFEAT YEAR</div>
+                        <input type="range" min="1930" max="1960" value="1930" class="horizontal-slider" id="lever2" oninput="document.getElementById('l2-v').innerText = this.value">
+                        <div style="font-size:1.2rem; font-weight:bold; color:var(--accent-green)" id="l2-v">1930</div>
+                    </div>
+                `;
+            } 
+            else if (currentRoom === 2) {
+                dialValue = 0;
+                stageHub.innerHTML = `
+                    <div id="dial-wheel" class="dial-wrap">
+                        <div class="dial-notch"></div>
+                        <div id="dial-readout" class="dial-center-readout">0</div>
+                    </div>
+                    <div class="tuner-button-group">
+                        <button class="tune-btn" onclick="tuneDial(-5000)">-5k</button>
+                        <button class="tune-btn" onclick="tuneDial(-1000)">-1k</button>
+                        <button class="tune-btn" onclick="tuneDial(1000)">+1k</button>
+                        <button class="tune-btn" onclick="tuneDial(5000)">+5k</button>
+                    </div>
+                `;
+            } 
+            else if (currentRoom === 3) {
+                const nodes = ["38", "6-2-5", "1953", "1945", "75,000", "1976", "44%", "3,900"];
+                stageHub.innerHTML = `
+                    <div class="crypto-grid">
+                        ${nodes.map((node, i) => `<div class="grid-node" id="node-${i}" onclick="toggleGridNode(${i}, '${node}')">${node}</div>`).join('')}
+                    </div>
+                `;
+                selectedNodes = [];
+            } 
+            else if (currentRoom === 4) {
+                stageHub.innerHTML = `
+                    <div class="circuit-array">
+                        <div class="breaker-switch"><div class="breaker-label">TEXTILES</div><input type="checkbox" id="sw-textile" class="switch-input"></div>
+                        <div class="breaker-switch"><div class="breaker-label">CHEMICAL</div><input type="checkbox" id="sw-chem" class="switch-input"></div>
+                        <div class="breaker-switch"><div class="breaker-label">AGRI-MACH</div><input type="checkbox" id="sw-agri" class="switch-input"></div>
+                        <div class="breaker-switch"><div class="breaker-label">FACTORIES</div><input type="checkbox" id="sw-factory" class="switch-input"></div>
+                    </div>
+                `;
+            } 
+            else if (currentRoom === 5) {
+                stageHub.innerHTML = `
+                    <div class="slider-matrix-rack" style="max-width:340px;">
+                        <div class="breaker-label" style="margin-bottom:5px;">TERRITORIAL ADJUSTMENT GAUGE</div>
+                        <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-green); margin-bottom:10px;" id="map-readout">0 SQ KM</div>
+                        <input type="range" min="0" max="6000" step="100" value="0" class="horizontal-slider" id="mapslider" oninput="document.getElementById('map-readout').innerText = this.value + ' SQ KM'">
+                    </div>
+                `;
+            }
+
+            // Engage the reading block protocol each time a room initiates
+            startReadingLock();
+        }
+
+        function pressNum(val) {
+            if (val === 'C') { keypadInput = ""; }
+            else { if(keypadInput.length < 10) keypadInput += val; }
+            document.getElementById('disp').innerText = keypadInput;
+        }
+
+        function tuneDial(amt) {
+            dialValue += amt;
+            if(dialValue < 0) dialValue = 0;
+            if(dialValue > 200000) dialValue = 200000;
+            document.getElementById('dial-readout').innerText = dialValue.toLocaleString();
+            document.getElementById('dial-wheel').style.transform = `rotate(${dialValue / 250}deg)`;
+        }
+
+        function toggleGridNode(idx, text) {
+            const element = document.getElementById(`node-${idx}`);
+            if (selectedNodes.includes(text)) {
+                selectedNodes = selectedNodes.filter(item => item !== text);
+                element.classList.remove('selected');
+            } else {
+                selectedNodes.push(text);
+                element.classList.add('selected');
+            }
+        }
+
+        function checkCurrentPuzzle() {
+            let isCorrect = false;
+            const feedback = document.getElementById('feedback-message');
+
+            if (currentRoom === 0) {
+                if (keypadInput === "19501953") isCorrect = true;
+            } 
+            else if (currentRoom === 1) {
+                const l1 = document.getElementById('lever1').value;
+                const l2 = document.getElementById('lever2').value;
+                if (l1 === "38" && l2 === "1945") isCorrect = true;
+            } 
+            else if (currentRoom === 2) {
+                if (dialValue === 70000) isCorrect = true;
+            } 
+            else if (currentRoom === 3) {
+                if (selectedNodes.length === 2 && selectedNodes.includes("6-2-5") && selectedNodes.includes("1976")) isCorrect = true;
+            } 
+            else if (currentRoom === 4) {
+                const textileChecked = document.getElementById('sw-textile').checked;
+                const chemChecked = document.getElementById('sw-chem').checked;
+                const agriChecked = document.getElementById('sw-agri').checked;
+                const factoryChecked = document.getElementById('sw-factory').checked;
+                if (textileChecked && chemChecked && !agriChecked && !factoryChecked) isCorrect = true;
+            } 
+            else if (currentRoom === 5) {
+                const sliderVal = document.getElementById('mapslider').value;
+                if (sliderVal === "4000") isCorrect = true;
+            }
+
+            if (isCorrect) {
+                feedback.style.color = "var(--accent-green)";
+                feedback.innerText = "ACCESS GRANTED. SYNCING CORE...";
+                currentRoom++;
+                setTimeout(() => {
+                    loadRoom();
+                }, 1500);
+            } else {
+                feedback.style.color = "var(--accent-red)";
+                feedback.innerText = "ACCESS DENIED: VERIFY VALUE CALCULATIONS";
+            }
+        }
+    </script>
+</body>
+</html>
